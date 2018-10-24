@@ -14,6 +14,7 @@ public class Sender implements Runnable {
 	static int windowSize;
 	static PacketS[] packets;
 	static InetAddress IPAddress;
+	static int globalShifter;
 	
 	public static void main(String[] args) throws Exception{
 		
@@ -40,30 +41,13 @@ public class Sender implements Runnable {
         	
         	packets[i]=new PacketS();
         	packets[i].seqno=i;
-        	packets[i].setPayload("PacketNumber:"+Integer.toString(i));
+        	packets[i].setPayload("Packet:"+Integer.toString(i)+"SaysHi!");
         	
         }
 //		String sentence= scan.nextLine();
 //		sendData=sentence.getBytes();
-        for (int i=0;i<windowSize;i++){
-        	
-        	sendData=packets[i].getPayload().getBytes();
-        	DatagramPacket sendPacket=new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
-        	buffer[Integer.parseInt(new String(sendPacket.getData()).split(" ")[0])]=sendPacket; //SETTING UP THE SLIDING WINDOW OF WHICH PACKETS TO SEND AND PUTTING THEM IN THE BUFFER
-        	if(i==6){
-        		continue;
-        	}
-        	senderSocket.send(sendPacket);
-        	//STORING IN THE BUFFER THE PACKETS THAT HAVE BEEN SENT BY THE SENDER
-        	
-//        	for(int f=0;f<windowSize;f++){
-//        		System.out.println(buffer[f]);
-//        	}
-//        	System.out.println();
-//        	Runtime.getRuntime().halt(0);
-//    		TimeUnit.SECONDS.sleep(2);
+        
 
-        }
 		
 //		DatagramPacket receivePacket= new DatagramPacket(receiveData, receiveData.length);
 //		clientSocket.receive(receivePacket);
@@ -80,7 +64,16 @@ public class Sender implements Runnable {
 		} catch (InterruptedException e1) {
 			e1.printStackTrace();
 		}
+		int counterForSendingAck=0;
 		while(true){
+			//TO SIMULATE THE EFFECT OF SENDING ACKS AFTER A WHILE (TO SHOW NOT STOP AND WAIT)
+	        if(counterForSendingAck%5==0){
+	        	try {
+					Thread.sleep(2000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+	        }
 			DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
 			try {
 				senderSocket.receive(receivePacket);
@@ -90,31 +83,61 @@ public class Sender implements Runnable {
 	        String sentence=new String(receivePacket.getData());
 	        System.out.println("RECEIVED from Receiver: "+sentence);
 	        String payloadReceived[]=sentence.split(" ");	        
-	        int lastGoodAck=Integer.parseInt(payloadReceived[5].trim());
-	        if(lastGoodAck==-1){
-	        	lastGoodAck=10;
-	        }
-	        for(int makingBufferNull=0;makingBufferNull<lastGoodAck;makingBufferNull++){
-	        	buffer[makingBufferNull]=null;
-	        }
+	        int lastGoodAck=Integer.parseInt(payloadReceived[2].trim());
 	        
+	        //IF YOU WANT TO IMPLEMENT CUMULATIVE ACKS
+//	        if(lastGoodAck==-1){
+//	        	lastGoodAck=windowSize;
+//	        }
+//	        for(int makingBufferNull=0;makingBufferNull<lastGoodAck;makingBufferNull++){
+//	        	buffer[makingBufferNull]=null; //TO REMOVE THE ACKED PACKETS FROM THE BUFFER
+//	        }
+	        
+	        buffer[lastGoodAck]=null;
+	        
+	        //FOR EVERY PACKET'S ACKS
 //	        for(int f=0;f<windowSize;f++){
 //        		System.out.println(buffer[f]);
 //        	}
 //        	Runtime.getRuntime().halt(0);
+	        counterForSendingAck++;
 		}
 	}
 	
-//	class ForSendingPackets implements Runnable{
-//
-//		
-//		public void run() {
-//			
-//				
-//		}
-//		
-//		
-//	}
+	class ForSendingPackets implements Runnable{
+
+		
+		public void run() {
+			while(true){
+	        int offset=windowSize*globalShifter;
+			for(int i=0+offset;i<offset+windowSize;i++){
+	        	
+	        	sendData=packets[i].getPayload().getBytes();
+	        	DatagramPacket sendPacket=new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
+	        	buffer[Integer.parseInt(new String(sendPacket.getData()).split(" ")[0])]=sendPacket; //SETTING UP THE SLIDING WINDOW OF WHICH PACKETS TO SEND AND PUTTING THEM IN THE BUFFER
+	        	if(i%7==0){
+	        		continue;
+	        	}
+	        	try {
+					senderSocket.send(sendPacket);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+	        	//STORING IN THE BUFFER THE PACKETS THAT HAVE BEEN SENT BY THE SENDER
+	        	
+//	        	for(int f=0;f<windowSize;f++){
+//	        		System.out.println(buffer[f]);
+//	        	}
+//	        	System.out.println();
+//	        	Runtime.getRuntime().halt(0);
+//	    		TimeUnit.SECONDS.sleep(2);
+
+	        }
+			}	
+		}
+		
+		
+	}
 	
 	class ForTimeouts implements Runnable{
 		
@@ -124,9 +147,11 @@ public class Sender implements Runnable {
 			} catch (InterruptedException e1) {
 				e1.printStackTrace();
 			}
-			
-			for(int i=0;i<windowSize;i++){
-				if(buffer[i]!=null){ //THIS MEANS THAT THE ACK FOR THIS PACKET WAS NOT RECEIVED					
+			int checkForShift=0;
+			int offset=windowSize*globalShifter;
+			for(int i=0+offset;i<offset+windowSize;i++){
+				if(buffer[i]!=null){ //THIS MEANS THAT THE ACK FOR THIS PACKET WAS NOT RECEIVED
+					checkForShift=1;
 					System.out.println("UH OH!!, THERE IS A TIMEOUT FOR PACKET "+i);
 					sendData=packets[i].getPayload().getBytes();
 		        	DatagramPacket sendPacket=new DatagramPacket(sendData, sendData.length, IPAddress, 9876);
@@ -140,6 +165,10 @@ public class Sender implements Runnable {
 					}
 		        	
 				}
+			}
+			if(checkForShift==0){
+				globalShifter++;
+				System.out.println(">>>>SLIDING WINDOW SHIFT");
 			}
 		}
 	}

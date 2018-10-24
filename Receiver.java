@@ -4,6 +4,8 @@ import java.net.*;
 import java.util.ArrayList;
 import java.util.Scanner;
 
+import org.w3c.dom.css.Counter;
+
 public class Receiver implements Runnable {
 	
 	static DatagramPacket[] buffer=new DatagramPacket[10000];
@@ -12,6 +14,7 @@ public class Receiver implements Runnable {
     static DatagramSocket receiverSocket;
     static int windowSize;
     static int lastAck; //KEEPS TRACK OF THE FRAME OF WHICH LAST ACK WAS NOT RECEIVED
+    static int globalShifter;
     
 	public static void main(String[] args) throws Exception {
 //		for(int i=0;i<10;i++){
@@ -21,7 +24,7 @@ public class Receiver implements Runnable {
 //		}
 //		Runtime.getRuntime().halt(0);
 		receiverSocket = new DatagramSocket(9876);
-        windowSize=10;
+//        windowSize=10;
         
 		//FOR SETTING UP THE WINDOW SIZE
 		DatagramPacket windowSizePacket = new DatagramPacket(receiveData, receiveData.length);
@@ -65,22 +68,35 @@ public class Receiver implements Runnable {
 			e1.printStackTrace();
 		}
         //SENDING ACKS
+        
+        //TO SIMULATE THE EFFECT OF SENDING ACKS AFTER A WHILE (TO SHOW NOT STOP AND WAIT)
+//        if(counterForSendingAck%5==0){
+//        	try {
+//				Thread.sleep(2000);
+//			} catch (InterruptedException e) {
+//				e.printStackTrace();
+//			}
+//        }
+        
         InetAddress IPAddress=receivePacket.getAddress();
         int port=receivePacket.getPort();
-        String acknowledge="ACK of "+sentence.split(" ")[0]+" EXPECTED ACK: "+String.valueOf(lastAck);
+//        String acknowledge="ACK of "+sentence.split(" ")[0]+" EXPECTED ACK: "+String.valueOf(lastAck); //USE THIS WHEN YOU WANT TO IMPLEMENT CUMULATIVE ACKS
+        String acknowledge="ACK of "+sentence.split(" ")[0];
 //    	if(Integer.parseInt(sentence.split(" ")[0])==6){
 //    		continue;
-//    	}
+//    	}S
         sendData=acknowledge.getBytes();
         DatagramPacket sendPacket=new DatagramPacket(sendData, sendData.length, IPAddress, port);
+        
         try {
-        	if(counterForSendingAck%2==0) //ONLY SEND THE ACK AFTER EVERY 3RD PACKET (SAME AS WHAT HAPPENS IN OPTIMIZED TCP NOW)
+//        	if(counterForSendingAck%5==0) //ONLY SEND THE ACK AFTER EVERY 3RD PACKET (SAME AS WHAT HAPPENS IN OPTIMIZED TCP NOW)
 			receiverSocket.send(sendPacket);
 		} catch (IOException e) { 
 			e.printStackTrace();
 		}
         counterForSendingAck++;
 	}
+		
 		}
 	
 	class loopChcekingEarliestFrame implements Runnable{
@@ -88,7 +104,9 @@ public class Receiver implements Runnable {
 		public void run(){
 			while(true){
 				int flag=0;
-				for(int i=0;i<windowSize;i++){
+				int offset=windowSize*globalShifter;
+				for(int i=0+offset;i<offset+windowSize;i++){
+					if(i==0)continue; //AS 0%ANY NUMBER IS 0 THEREFORE lastAck WONT EVER CHANGE, SO BETTER TO CONTINUE AT I=0
 					if(buffer[i]==null){
 						lastAck=i;
 						flag=1;
@@ -97,9 +115,15 @@ public class Receiver implements Runnable {
 				}
 				if(flag==0){
 					lastAck=-1;
+					System.out.println("In-Order Data:");
+					for(int z=0;z<windowSize;z++){
+						System.out.print(Integer.parseInt(new String(buffer[z].getData()).split(" ")[0].trim())+" ");
+					}
+					globalShifter++;
+					System.out.println(">>>>SLIDING WINDOW SHIFT");
 				}
 				try {
-					Thread.sleep(200);
+					Thread.sleep(300); //SO THAT LAST ACK GETS UPDATED ALSO AND DOESNT REMAIN STICK ON ONE INDEX
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
