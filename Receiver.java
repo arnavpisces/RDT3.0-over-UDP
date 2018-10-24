@@ -15,7 +15,7 @@ public class Receiver implements Runnable {
     static int windowSize;
     static int lastAck; //KEEPS TRACK OF THE FRAME OF WHICH LAST ACK WAS NOT RECEIVED
     static int globalShifter;
-    static int counterForReceivingDirectlyInArray=0;
+    static int totalSpaceLeft=10000;
     
 	public static void main(String[] args) throws Exception {
 //		for(int i=0;i<10;i++){
@@ -53,7 +53,7 @@ public class Receiver implements Runnable {
 		Thread forEarliestFrame=new Thread(new loopCheckingEarliestFrame());
 		forEarliestFrame.start();
 		int counterForSendingAck=0;
-		counterForReceivingDirectlyInArray=0;
+//		totalSpaceLeft=0;
 		
 		while(true){
 		
@@ -70,6 +70,7 @@ public class Receiver implements Runnable {
         System.out.println("RECEIVED from Sender: "+sentence);
         
         buffer[Integer.parseInt(new String(sentence.split(" ")[0]))]=receivePacket;
+        totalSpaceLeft--;
 //        for(int x=0;buffer[x]!=null;x++){
 //        	System.out.println(new String(buffer[x].getData())+" GLobalShifter"+globalShifter);
 //        }
@@ -93,7 +94,7 @@ public class Receiver implements Runnable {
         int port=receivePacket.getPort();
         
 //        String acknowledge="ACK of "+sentence.split(" ")[0]+" EXPECTED ACK: "+String.valueOf(lastAck); //USE THIS WHEN YOU WANT TO IMPLEMENT CUMULATIVE ACKS
-        String acknowledge="ACK of "+sentence.split(" ")[0];
+        String acknowledge="ACK of "+sentence.split(" ")[0]+" RCWD: "+totalSpaceLeft;
 //    	if(Integer.parseInt(sentence.split(" ")[0])==6){
 //    		continue;
 //    	}S
@@ -106,7 +107,6 @@ public class Receiver implements Runnable {
 		} catch (IOException e) { 
 			e.printStackTrace();
 		}
-        counterForReceivingDirectlyInArray++;
         counterForSendingAck++;
 	}
 		
@@ -140,8 +140,10 @@ public class Receiver implements Runnable {
 					}
 					System.out.println();
 					globalShifter++;
-					counterForReceivingDirectlyInArray=0+offset;
 					System.out.println("\n>>>>SLIDING WINDOW SHIFT");
+					totalSpaceLeft+=windowSize;
+					System.out.println("\n~~~~FLUSHING BUFFER(MORE SPACE YAY!)");
+					
 				}
 //				System.out.println();
 				try {
