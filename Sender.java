@@ -21,7 +21,7 @@ public class Sender implements Runnable {
 		Scanner scan=new Scanner(System.in);
 		senderSocket=new DatagramSocket();
 		IPAddress=InetAddress.getByName("localhost");	
-		packets=new PacketS[1000];
+		packets=new PacketS[10000];
 		windowSize=10;
 //		ArrayList<PacketS> packets=new ArrayList<PacketS>();  
 		
@@ -37,13 +37,14 @@ public class Sender implements Runnable {
 		//THREAD FOR RECEIVING ACKNOWLEDGEMENTS
 		Thread forAck= new Thread(new Sender());
 		forAck.start();
-        for (int i=0;i<windowSize;i++){
+        for (int i=0;i<10000;i++){
         	
         	packets[i]=new PacketS();
         	packets[i].seqno=i;
         	packets[i].setPayload("Packet:"+Integer.toString(i)+"SaysHi!");
         	
         }
+        
 //		String sentence= scan.nextLine();
 //		sendData=sentence.getBytes();
         
@@ -108,7 +109,7 @@ public class Sender implements Runnable {
 
 		
 		public void run() {
-			while(true){
+			
 	        int offset=windowSize*globalShifter;
 			for(int i=0+offset;i<offset+windowSize;i++){
 	        	
@@ -133,7 +134,7 @@ public class Sender implements Runnable {
 //	    		TimeUnit.SECONDS.sleep(2);
 
 	        }
-			}	
+				
 		}
 		
 		
@@ -142,11 +143,14 @@ public class Sender implements Runnable {
 	class ForTimeouts implements Runnable{
 		
 		public void run(){
+			Thread sendZePackets=new Thread(new ForSendingPackets());
+	        sendZePackets.start();
 			try {
 				Thread.sleep(5000);
 			} catch (InterruptedException e1) {
 				e1.printStackTrace();
 			}
+			while(true){
 			int checkForShift=0;
 			int offset=windowSize*globalShifter;
 			for(int i=0+offset;i<offset+windowSize;i++){
@@ -169,6 +173,14 @@ public class Sender implements Runnable {
 			if(checkForShift==0){
 				globalShifter++;
 				System.out.println(">>>>SLIDING WINDOW SHIFT");
+				sendZePackets=new Thread(new ForSendingPackets()); //THIS IS TO AGAIN SEND THE PACKETS AFTER THE SLIDING WINDOW HAS SHIFTED
+		        sendZePackets.start();
+		        try {
+					Thread.sleep(5000);
+				} catch (InterruptedException e1) {
+					e1.printStackTrace();
+				}
+			}
 			}
 		}
 	}
