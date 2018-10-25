@@ -1,3 +1,4 @@
+//ARNAV KUMAR - 2016017
 package ass2;
 import java.io.*;
 import java.net.*;
@@ -15,7 +16,7 @@ public class Receiver implements Runnable {
     static int windowSize;
     static int lastAck; //KEEPS TRACK OF THE FRAME OF WHICH LAST ACK WAS NOT RECEIVED
     static int globalShifter;
-    static int totalSpaceLeft=10000;
+    static int totalSpaceLeft=100;
     
 	public static void main(String[] args) throws Exception {
 //		for(int i=0;i<10;i++){
@@ -104,10 +105,14 @@ public class Receiver implements Runnable {
         try {
 //        	if(counterForSendingAck%5==0) //ONLY SEND THE ACK AFTER EVERY 3RD PACKET (SAME AS WHAT HAPPENS IN OPTIMIZED TCP NOW)
 			receiverSocket.send(sendPacket);
+			if(totalSpaceLeft==0){
+	        	totalSpaceLeft=100;
+	        }
 		} catch (IOException e) { 
 			e.printStackTrace();
 		}
         counterForSendingAck++;
+        
 	}
 		
 		}

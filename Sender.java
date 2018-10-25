@@ -1,3 +1,4 @@
+//ARNAV KUMAR - 2016017
 package ass2;
 import java.io.*;
 import java.net.*;
@@ -102,6 +103,18 @@ public class Sender implements Runnable {
 //        	}
 //        	Runtime.getRuntime().halt(0);
 	        counterForSendingAck++;
+	        int rcwd=Integer.parseInt(payloadReceived[4].trim());
+	        //THIS IS FOR FLOW CONTROL, IF WINDOW SIZE<BUFFER SIZE THEN EVERYTHING IS GOOD, IF THE OPP. THEN SENDER WILL STOP FOR THE BUFFER OF RECEIVER TO GET EMPTY
+	        if (rcwd==0){
+	        	System.out.println();
+	        	System.out.println("-----HOLD UP, THE RECEIVER'S BUFFER IS FULL, LET'S WAIT A LITTLE------");
+	        	System.out.println();
+	        	try {
+					Thread.sleep(5000);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+	        }
 		}
 	}
 	
